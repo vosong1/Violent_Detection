@@ -15,8 +15,8 @@ Violent_Detection/
 ├── models/
 │   └── valdnet_baseline.py   # Định nghĩa kiến trúc mạng ValdNet (mô hình dự đoán bạo lực)
 │
-├── dataset/
-│   └── my_dataset/           # Thư mục chứa dữ liệu gốc
+├── dataset/data( gốc)
+├── my_dataset/           # Thư mục chứa dữ liệu gốc
 │       ├── train/            # Video dùng để huấn luyện
 │       │   ├── violence/     
 │       │   └── non_violence/ 
@@ -32,7 +32,7 @@ Violent_Detection/
 Để huấn luyện mô hình từ đầu, vui lòng thực hiện tuần tự theo các bước sau( đổi đường dẫn trong cònfig.py nếu cần):
 
 **Bước 1: Chuẩn bị dữ liệu**
-* Đặt data vào dataset sau đó chạy file split_data.
+* Đặt data vào dataset sau đó chạy file `split_data.py`.
 **Bước 2: Tiền xử lý dữ liệu (Preprocessing)**
 * Chạy lệnh: `python process.py`
 * Quá trình này sẽ lấy mẫu khung hình, tính toán Optical Flow và lưu thành các file Tensor (`.pt`) chuẩn bị cho PyTorch trong thư mục `processed_data`.
