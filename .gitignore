@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Ignore datasets (bỏ qua các thư mục chứa dữ liệu video/tensor)
+/dataset/
+/my_dataset/
