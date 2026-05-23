@@ -15,7 +15,7 @@ class Config:
     LSTM_LAYERS = 1            # Số tầng LSTM
     
     # Thông số Huấn luyện (Training)
-    BATCH_SIZE = 8
+    BATCH_SIZE = 2             # Giảm xuống 2 hoặc 4 để tránh lỗi CUDA Out of Memory
     LEARNING_RATE = 1e-4
     EPOCHS = 50
     DEVICE = "cuda"            # Đổi thành "cpu" nếu không có GPU
