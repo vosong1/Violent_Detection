@@ -1,16 +1,11 @@
 import torch
 import matplotlib.pyplot as plt
-
-# 1. Load 1 file tensor bất kỳ
-data = torch.load("D:\\Violent_Detection\\my_dataset\\processed_data\\train\\violence\\fi90_xvid.pt")
+data = torch.load("D:\\Violent_Detection\\my_dataset\\processed_data\\train\\violence\\fi2_xvid.pt")
 rgb_seq = data['rgb']    # Shape: (16, 3, 224, 224)
 flow_seq = data['flow']  # Shape: (16, 3, 224, 224)
 
-# 2. Chọn khung hình thứ 8 (ở giữa video) để xem
-frame_idx = 15
+frame_idx =  8
 
-
-# 3. Chuyển đổi ngược: (C, H, W) -> (H, W, C) để matplotlib vẽ được
 img_rgb = rgb_seq[frame_idx].permute(1, 2, 0).numpy()
 img_flow = flow_seq[frame_idx].permute(1, 2, 0).numpy()
 

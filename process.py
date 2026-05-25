@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import torch
 from config import cfg
+from tqdm import tqdm
 from utils import compute_farneback_flow # Hàm tính Flow ở phần trước
 
 def process_single_video(video_path, output_path):
@@ -64,6 +65,10 @@ def process_single_video(video_path, output_path):
     return True
 
 def main():
+    total_processed = 0
+    total_skipped = 0
+    total_errors = 0
+    
     for phase in ['train', 'val']:
         for category in ['violence', 'non_violence']:
             in_folder = os.path.join(cfg.DATA_DIR, phase, category)
@@ -80,21 +85,24 @@ def main():
             videos = [f for f in os.listdir(in_folder) if f.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))]
             print(f"\nĐang xử lý {len(videos)} video tại {in_folder}...")
             
-            for vid_name in videos:
+            for vid_name in tqdm(videos, desc=f"{phase}/{category}"):
                 vid_path = os.path.join(in_folder, vid_name)
-                # Đổi đuôi .mp4 thành .pt
-                out_name = vid_name.rsplit('.', 1)[0] + '.pt'
+                # Đổi đuôi video thành .pt một cách chuẩn xác
+                out_name = os.path.splitext(vid_name)[0] + '.pt'
                 out_path = os.path.join(out_folder, out_name)
                 
                 # Kiểm tra xem file đã tồn tại chưa để hỗ trợ chạy tiếp (resume) khi gián đoạn
                 if os.path.exists(out_path):
-                    print(f"  -> Bỏ qua (đã tồn tại): {out_name}")
+                    total_skipped += 1
                     continue
 
                 if process_single_video(vid_path, out_path):
-                    print(f"  -> Đã lưu: {out_name}")
+                    total_processed += 1
                 else:
-                    print(f"  -> Lỗi/Bỏ qua: {vid_name}")
+                    total_errors += 1
+
+    print("\n=== HOÀN TẤT TIỀN XỬ LÝ ===")
+    print(f"Thành công: {total_processed} | Bỏ qua (đã có): {total_skipped} | Lỗi (video quá ngắn/hỏng): {total_errors}")
 
 if __name__ == "__main__":
     main()
