@@ -1,0 +1,15 @@
+name: violent_detection
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision
+  - pytorch-cuda=11.8  # Đổi phiên bản CUDA cho phù hợp với máy bạn, xoá dòng này nếu dùng CPU
+  - opencv
+  - numpy
+  - matplotlib
+  - tqdm
+  - notebook
