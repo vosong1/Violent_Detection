@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import torchvision.transforms as T
 from tqdm import tqdm # Import thêm thư viện hiển thị tiến trình
+from torch.cuda.amp import autocast, GradScaler # Kỹ thuật Mixed Precision giúp tăng tốc và giảm VRAM
 
 from config import cfg
 from models.valdnet_baseline import ValdNetBaseline
@@ -15,17 +17,17 @@ def train_model():
     print(f"Bắt đầu huấn luyện trên thiết bị: {device}")
     
     # 2. Hàm Loss
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     
     # 3. Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=cfg.LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=cfg.LEARNING_RATE, weight_decay=cfg.WEIGHT_DECAY)
     
     # 4. Load Data
     train_dataset = PreprocessedVideoDataset(data_dir=cfg.PROCESSED_DATA_DIR, phase='train')
-    train_loader = DataLoader(train_dataset, batch_size=cfg.BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=cfg.BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
     
     val_dataset = PreprocessedVideoDataset(data_dir=cfg.PROCESSED_DATA_DIR, phase='val')
-    val_loader = DataLoader(val_dataset, batch_size=cfg.BATCH_SIZE, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=cfg.BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
     
     if len(train_loader) == 0 or len(val_loader) == 0:
         print("LỖI NGHIÊM TRỌNG: DataLoader trống! Vui lòng kiểm tra lại thư mục dữ liệu.")
@@ -33,6 +35,15 @@ def train_model():
 
     # 5. Vòng lặp Huấn luyện
     best_val_loss = float('inf')
+    epochs_no_improve = 0 # Biến đếm cho Early Stopping
+    
+    scaler = GradScaler() # Bộ chia tỷ lệ gradient cho FP16
+    
+    # 6. Data Augmentation
+    # Áp dụng Augmentation cho khung hình RGB ngay trong lúc train để tăng độ đa dạng
+    train_transforms = T.Compose([
+        T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.05)
+    ])
     
     for epoch in range(cfg.EPOCHS):
         # --- HUẤN LUYỆN ---
@@ -48,19 +59,30 @@ def train_model():
             flow_seq = flow_seq.to(device)
             labels = labels.to(device)
             
-            optimizer.zero_grad()
-            predictions = model(rgb_seq, flow_seq)
+            # Áp dụng Data Augmentation (chỉ trên luồng RGB)
+            B, T_frames, C, H, W = rgb_seq.shape
+            rgb_seq_flat = rgb_seq.view(B * T_frames, C, H, W)
+            rgb_seq_flat = train_transforms(rgb_seq_flat)
+            rgb_seq = rgb_seq_flat.view(B, T_frames, C, H, W)
             
-            predictions = predictions.view(-1)
-            labels = labels.view(-1)
-            predictions = torch.clamp(predictions, min=0.0, max=1.0)
+            optimizer.zero_grad()
+            
+            # Cho phép PyTorch tự động ép kiểu dữ liệu xuống FP16 để tính toán nhanh hơn
+            with autocast():
+                predictions = model(rgb_seq, flow_seq)
+                
+                predictions = predictions.view(-1)
+                labels = labels.view(-1)
 
-            loss = criterion(predictions, labels)
-            loss.backward()
-            optimizer.step()
+                loss = criterion(predictions, labels)
+            
+            # Lan truyền ngược sử dụng GradScaler
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             
             total_loss += loss.item()
-            predicted = (predictions > 0.5).float()
+            predicted = (predictions > 0.0).float()
             correct_train += (predicted == labels).sum().item()
             total_train += labels.size(0)
             
@@ -83,15 +105,16 @@ def train_model():
                 flow_seq = flow_seq.to(device)
                 labels = labels.to(device)
                 
-                predictions = model(rgb_seq, flow_seq)
-                predictions = predictions.view(-1)
-                labels = labels.view(-1)
-                predictions = torch.clamp(predictions, min=0.0, max=1.0)
+                # Cũng dùng Mixed Precision khi đánh giá Validation
+                with autocast():
+                    predictions = model(rgb_seq, flow_seq)
+                    predictions = predictions.view(-1)
+                    labels = labels.view(-1)
 
-                loss = criterion(predictions, labels)
+                    loss = criterion(predictions, labels)
                 
                 val_loss += loss.item()
-                predicted = (predictions > 0.5).float()
+                predicted = (predictions > 0.0).float()
                 correct_val += (predicted == labels).sum().item()
                 total_val += labels.size(0)
                 
@@ -104,8 +127,17 @@ def train_model():
               
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            epochs_no_improve = 0
             torch.save(model.state_dict(), "best_model.pth")
             print("   [+] Đã lưu model tốt nhất (best_model.pth)!\n")
+        else:
+            epochs_no_improve += 1
+            print(f"   [-] Val Loss không giảm ({epochs_no_improve}/{cfg.PATIENCE})\n")
+            
+            # Kiểm tra Early Stopping
+            if epochs_no_improve >= cfg.PATIENCE:
+                print(f"Báo động: Đã dừng sớm (Early Stopping) tại Epoch {epoch+1} để tránh Overfitting!")
+                break
 
 if __name__ == "__main__":
     train_model()

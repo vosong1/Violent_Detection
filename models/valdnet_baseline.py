@@ -25,14 +25,16 @@ class ValdNetBaseline(nn.Module):
             bidirectional=True
         )
         
+        # Thêm Dropout trước khi vào LSTM để phạt thêm
+        self.dropout_feature = nn.Dropout(0.5)
+        
         # 3. Lớp phân loại cuối cùng (Ra quyết định bạo lực hay không)
         # Đầu vào là 2 * LSTM_HIDDEN_SIZE (do chạy 2 chiều tiến & lùi)
         self.classifier = nn.Sequential(
             nn.Linear(cfg.LSTM_HIDDEN_SIZE * 2, 128),
             nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(128, 1),
-            nn.Sigmoid()         # Ép về xác suất 0 -> 1
+            nn.Dropout(0.7),     # Tăng Dropout từ 0.5 lên 0.7 để giảm Overfitting mạnh hơn
+            nn.Linear(128, 1)    # Bỏ Sigmoid theo chuẩn BCEWithLogitsLoss
         )
 
     def forward(self, rgb_seq, flow_seq):
@@ -40,8 +42,8 @@ class ValdNetBaseline(nn.Module):
         batch_size, T, C, H, W = rgb_seq.size()
         
         # Gộp Batch và T lại để cho vào EfficientNet cùng lúc (tối ưu tốc độ)
-        rgb_reshaped = rgb_seq.view(batch_size * T, C, H, W)
-        flow_reshaped = flow_seq.view(batch_size * T, C, H, W)
+        rgb_reshaped = rgb_seq.reshape(batch_size * T, C, H, W)
+        flow_reshaped = flow_seq.reshape(batch_size * T, C, H, W)
         
         # Trích xuất đặc trưng
         # Kết quả: (Batch * T, 1280)
@@ -52,7 +54,10 @@ class ValdNetBaseline(nn.Module):
         feat_fused = feat_rgb + feat_flow 
         
         # Tách lại ra định dạng chuỗi: (Batch, T, 1280)
-        feat_fused = feat_fused.view(batch_size, T, -1)
+        feat_fused = feat_fused.reshape(batch_size, T, -1)
+        
+        # Regularization: Áp dụng Dropout cho feature hỗn hợp
+        feat_fused = self.dropout_feature(feat_fused)
         
         # Cho qua mạng Bi-LSTM
         # out: (Batch, T, Hidden_size * 2)
