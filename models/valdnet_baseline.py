@@ -9,6 +9,11 @@ class ValdNetBaseline(nn.Module):
         # 1. Khởi tạo bộ trích xuất đặc trưng (EfficientNet-B0)
         # Bỏ đi lớp Classification cuối cùng, chỉ lấy Feature Extractor
         cnn = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
+        
+        # ĐÓNG BĂNG (FREEZE) các trọng số của EfficientNet để chống Overfitting mạnh mẽ
+        for param in cnn.parameters():
+            param.requires_grad = False
+
         self.feature_extractor = nn.Sequential(
             cnn.features,
             cnn.avgpool,
@@ -31,11 +36,20 @@ class ValdNetBaseline(nn.Module):
         # 3. Lớp phân loại cuối cùng (Ra quyết định bạo lực hay không)
         # Đầu vào là 2 * LSTM_HIDDEN_SIZE (do chạy 2 chiều tiến & lùi)
         self.classifier = nn.Sequential(
-            nn.Linear(cfg.LSTM_HIDDEN_SIZE * 2, 128),
+            nn.Linear(cfg.LSTM_HIDDEN_SIZE * 2, 64), # Giảm từ 128 xuống 64
             nn.ReLU(),
             nn.Dropout(0.7),     # Tăng Dropout từ 0.5 lên 0.7 để giảm Overfitting mạnh hơn
-            nn.Linear(128, 1)    # Bỏ Sigmoid theo chuẩn BCEWithLogitsLoss
+            nn.Linear(64, 1)     # Bỏ Sigmoid theo chuẩn BCEWithLogitsLoss
         )
+
+    def train(self, mode=True):
+        """
+        Ghi đè hàm train() mặc định của PyTorch.
+        Mục đích: Ép phần EfficientNet (đã đóng băng) luôn ở chế độ eval() 
+        để các lớp Batch Normalization không bị nhiễu bởi Batch Size nhỏ.
+        """
+        super(ValdNetBaseline, self).train(mode)
+        self.feature_extractor.eval()
 
     def forward(self, rgb_seq, flow_seq):
         # Kích thước đầu vào dự kiến: (Batch, T, C, H, W)
