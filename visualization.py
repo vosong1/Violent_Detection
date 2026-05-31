@@ -4,7 +4,7 @@ data = torch.load("D:\\Violent_Detection\\my_dataset\\processed_data\\val\\viole
 rgb_seq = data['rgb']    # Shape: (16, 3, 224, 224)
 flow_seq = data['flow']  # Shape: (16, 3, 224, 224)
 
-frame_idx =  8
+frame_idx =  6
 
 img_rgb = rgb_seq[frame_idx].permute(1, 2, 0).numpy()
 img_flow = flow_seq[frame_idx].permute(1, 2, 0).numpy()
