@@ -7,7 +7,7 @@ import random
 # ==========================================
 RAW_DATA_DIR = "D:\\Violent_Detection\\dataset\\data"          # Thư mục đang chứa hỗn lốn video của bạn
 OUTPUT_DIR = "D:\\Violent_Detection\\my_dataset"      # Thư mục đích sẽ chứa data đã chia chuẩn
-TRAIN_RATIO = 0.8                # 80% cho Train, 20% cho Validation
+TRAIN_RATIO = 0.7                # 70% cho Train, 30% cho Validation
 
 # ==========================================
 # 2. HÀM KIỂM TRA NHÃN DỰA VÀO TÊN FILE

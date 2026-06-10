@@ -10,7 +10,7 @@ def process_single_video(video_path, output_path):
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
-    if total_frames < 2:
+    if total_frames < cfg.T_FRAMES:
         cap.release() # Vá lỗi rò rỉ RAM nếu video lỗi bị return sớm
         return False 
         
