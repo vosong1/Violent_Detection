@@ -116,6 +116,7 @@ def train_model():
     }
 
     best_val_loss = float("inf")
+    best_val_acc = 0.0
     bad_epochs = 0
     patience = Config.PATIENCE
 
@@ -166,6 +167,11 @@ def train_model():
                 mask_idx = torch.randint(0, T, (1,)).item()
                 rgb_seq[:, mask_idx] = 0.0
                 flow_seq[:, mask_idx] = 0.0
+
+            # Bổ sung Lật ngang video (Horizontal Flip)
+            if torch.rand(1).item() < 0.5:
+                rgb_seq = torch.flip(rgb_seq, dims=[-1])
+                flow_seq = torch.flip(flow_seq, dims=[-1])
                 
             smoothed_labels = labels
 
@@ -260,14 +266,17 @@ def train_model():
         print(f"Train - Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
         print(f"Val   - Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
 
-        if val_loss < best_val_loss - Config.MIN_DELTA:
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            torch.save(model.state_dict(), "best_model.pth")
+            print("Saved best model (based on Accuracy)")
+            
+        if val_loss < best_val_loss:
             best_val_loss = val_loss
             bad_epochs = 0
-            torch.save(model.state_dict(), "best_model.pth")
-            print("Saved best model")
         else:
             bad_epochs += 1
-            print(f"No improvement: {bad_epochs}/{patience}")
+            print(f"No improvement in loss: {bad_epochs}/{patience}")
 
             if bad_epochs >= patience:
                 print("Early stopping triggered")
@@ -275,7 +284,6 @@ def train_model():
 
         save_training_plot(history, "training_history.png")
 
-    # LOAD BEST MODEL
     model.load_state_dict(torch.load("best_model.pth", map_location=device, weights_only=True))
     print("Loaded best model")
 

@@ -7,7 +7,8 @@ import random
 # ==========================================
 RAW_DATA_DIR = "D:\\Violent_Detection\\dataset\\data"          # Thư mục đang chứa hỗn lốn video của bạn
 OUTPUT_DIR = "D:\\Violent_Detection\\my_dataset"      # Thư mục đích sẽ chứa data đã chia chuẩn
-TRAIN_RATIO = 0.7                # 70% cho Train, 30% cho Validation
+TRAIN_RATIO = 0.7                # 70% cho Train
+VAL_RATIO = 0.1                  # 10% cho Validation (20% còn lại tự động thành Test)
 
 # ==========================================
 # 2. HÀM KIỂM TRA NHÃN DỰA VÀO TÊN FILE
@@ -40,24 +41,31 @@ def main():
     random.shuffle(violence_vids)
     random.shuffle(normal_vids)
     
-    # Tính toán điểm cắt (Split index)
-    v_split_idx = int(len(violence_vids) * TRAIN_RATIO)
-    n_split_idx = int(len(normal_vids) * TRAIN_RATIO)
+    # Tính toán điểm cắt (Split index) 7-1-2
+    v_train_idx = int(len(violence_vids) * TRAIN_RATIO)
+    v_val_idx = v_train_idx + int(len(violence_vids) * VAL_RATIO)
+    
+    n_train_idx = int(len(normal_vids) * TRAIN_RATIO)
+    n_val_idx = n_train_idx + int(len(normal_vids) * VAL_RATIO)
     
     # Đóng gói thành Dictionary để dễ xử lý bằng vòng lặp
     splits = {
         "train": {
-            "violence": violence_vids[:v_split_idx],
-            "non_violence": normal_vids[:n_split_idx]
+            "violence": violence_vids[:v_train_idx],
+            "non_violence": normal_vids[:n_train_idx]
         },
         "val": {
-            "violence": violence_vids[v_split_idx:],
-            "non_violence": normal_vids[n_split_idx:]
+            "violence": violence_vids[v_train_idx:v_val_idx],
+            "non_violence": normal_vids[n_train_idx:n_val_idx]
+        },
+        "test": {
+            "violence": violence_vids[v_val_idx:],
+            "non_violence": normal_vids[n_val_idx:]
         }
     }
     
     # Bắt đầu quá trình tạo thư mục và COPY file
-    for phase in ["train", "val"]:
+    for phase in ["train", "val", "test"]:
         for category in ["violence", "non_violence"]:
             # Tạo đường dẫn thư mục đích (Ví dụ: my_dataset/train/violence)
             target_folder = os.path.join(OUTPUT_DIR, phase, category)

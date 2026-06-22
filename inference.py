@@ -3,6 +3,7 @@ import cv2
 import torch
 import numpy as np
 import torchvision.transforms as transforms
+from torch.amp import autocast
 from config import Config as cfg
 from models.valdnet_baseline import TwoStreamBiLSTMModel
 from utils import compute_farneback_flow
@@ -73,7 +74,7 @@ def main(video_path):
         num_classes=1, 
         rnn_hidden_size=cfg.LSTM_HIDDEN_SIZE,
         num_rnn_layers=cfg.LSTM_LAYERS,
-        freeze_backbone=True
+        freeze_backbone=False
     ).to(device)
     
     model_path = "best_model.pth"
@@ -106,8 +107,9 @@ def main(video_path):
     # 4. Dự đoán
     print("Đang dự đoán...")
     with torch.no_grad():
-        outputs = model(rgb_seq, flow_seq)
-        probability = torch.sigmoid(outputs).item()
+        with autocast(device.type, enabled=(device.type == "cuda")):
+            outputs = model(rgb_seq, flow_seq)
+            probability = torch.sigmoid(outputs).item()
         
     prediction = "Violence (Bạo lực)" if probability > 0.5 else "Non-Violence (Bình thường)"
     confidence = probability if probability > 0.5 else 1 - probability
