@@ -22,6 +22,7 @@ def main():
     ).to(device)
     
     model_path = "best_model.pth"
+    # model_path = "best_finetuned_rlvs.pth"
     if not os.path.exists(model_path):
         print(f"Không tìm thấy file trọng số {model_path}. Vui lòng huấn luyện mô hình trước!")
         return
@@ -33,7 +34,9 @@ def main():
     normalize_rgb = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     normalize_flow = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 
-    test_dir = r"D:\Violent_Detection\my_dataset\test"
+    test_dir = r"D:\Violent_Detection\my_dataset\hk\test"
+    # test_dir = r"D:\Violent_Detection\my_dataset\rlvs\test"
+
     categories = {
         "non_violence": 0,
         "violence": 1
@@ -41,10 +44,10 @@ def main():
     
     all_labels = []
     all_preds = []
+    wrong_predictions = []
 
     print("\nBắt đầu đánh giá mô hình trên tập Test...")
     
-    # 3. Duyệt qua từng video trong tập test
     for category, label in categories.items():
         folder_path = os.path.join(test_dir, category)
         if not os.path.exists(folder_path):
@@ -79,6 +82,16 @@ def main():
             all_labels.append(label)
             all_preds.append(pred)
 
+            # THÊM MỚI: Nếu dự đoán sai thì lưu lại thông tin
+            if pred != label:
+                pred_label_name = "violence" if pred == 1 else "non_violence"
+                wrong_predictions.append({
+                    "video": vid_name,
+                    "true_label": category,
+                    "pred_label": pred_label_name,
+                    "probability": prob
+                })
+
     if len(all_labels) == 0:
         print("Không có video nào được đánh giá. Hãy kiểm tra lại dữ liệu!")
         return
@@ -90,7 +103,7 @@ def main():
     report = classification_report(all_labels, all_preds, target_names=["Non-Violence", "Violence"])
 
     print("\n" + "="*55)
-    print("      KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST (300 VIDEOS)      ")
+    print("      KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST      ")
     print("="*55)
     print(f"Độ chính xác (Accuracy) : {acc * 100:.2f}%")
     print(f"F1-Score                : {f1:.4f}")
@@ -99,6 +112,16 @@ def main():
     print("Confusion Matrix")
     print(cm)
     print("="*55)
+
+    # THÊM MỚI: In ra danh sách các video bị sai
+    if len(wrong_predictions) > 0:
+        print("\n" + "!"*55)
+        print(f" DANH SÁCH CÁC VIDEO DỰ ĐOÁN SAI: {len(wrong_predictions)} files ")
+        print("!"*55)
+        for error in wrong_predictions:
+            print(f"File: {error['video']} | Thực tế: {error['true_label']} -> AI đoán: {error['pred_label']} (Xác suất Violence: {error['probability']:.4f})")
+    else:
+        print("\nTuyệt vời! Mô hình dự đoán đúng 100% các file.")
 
 if __name__ == "__main__":
     main()

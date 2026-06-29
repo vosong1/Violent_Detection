@@ -1,8 +1,7 @@
-# config.py
 
 class Config:
-    DATA_DIR = "my_dataset"
-    PROCESSED_DATA_DIR = "my_dataset/processed_data"
+    DATA_DIR = "my_dataset/rlvs"
+    PROCESSED_DATA_DIR = "my_dataset/rlvs/processed_data"
 
     T_FRAMES = 16      
     IMAGE_SIZE = 224          
@@ -13,9 +12,9 @@ class Config:
     
     BATCH_SIZE = 8         
     GRAD_ACCUM_STEPS = 4      
-    LEARNING_RATE = 0.00001     
+    LEARNING_RATE = 0.0001     
     WEIGHT_DECAY = 0.001     
-    PATIENCE = 15           
+    PATIENCE = 5           
     MIN_DELTA = 0.001     
     EPOCHS = 100
     DEVICE = "cuda"           

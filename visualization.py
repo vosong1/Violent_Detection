@@ -1,6 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
-data = torch.load("D:\\Violent_Detection\\my_dataset\\processed_data\\train\\violence\\fi6_xvid.pt")
+data = torch.load("D:\\Violent_Detection\\my_dataset\\processed_data\\train\\violence\\no198_xvid.pt")
 rgb_seq = data['rgb']    # Shape: (16, 3, 224, 224)
 flow_seq = data['flow']  # Shape: (16, 3, 224, 224)
 

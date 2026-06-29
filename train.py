@@ -50,7 +50,7 @@ def get_model(cfg_class):
         num_classes=1, 
         rnn_hidden_size=cfg_class.LSTM_HIDDEN_SIZE,
         num_rnn_layers=cfg_class.LSTM_LAYERS,
-        freeze_backbone=True 
+        freeze_backbone=False 
     )
 
 def train_model():
@@ -70,12 +70,21 @@ def train_model():
     criterion = nn.BCEWithLogitsLoss()
 
     # Optimizer
-    optimizer = optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()), 
-        lr=Config.LEARNING_RATE,
-        weight_decay=Config.WEIGHT_DECAY
+    # Phân tách các tham số của mô hình thành 2 nhóm
+    cnn_params = list(model.cnn_rgb.parameters()) + list(model.cnn_op.parameters())
+    
+    other_params = (
+        list(model.feature_fusion.parameters()) + 
+        list(model.rnn.parameters()) + 
+        list(model.attention.parameters()) + 
+        list(model.classifier.parameters())
     )
 
+    # Sử dụng Differential Learning Rates (Backbone học siêu chậm, BiLSTM học bình thường)
+    optimizer = optim.AdamW([
+        {'params': cnn_params, 'lr': 0.00001},                
+        {'params': other_params, 'lr': Config.LEARNING_RATE} 
+    ], weight_decay=Config.WEIGHT_DECAY)
     # Scheduler
     scheduler = optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
@@ -172,6 +181,11 @@ def train_model():
             if torch.rand(1).item() < 0.5:
                 rgb_seq = torch.flip(rgb_seq, dims=[-1])
                 flow_seq = torch.flip(flow_seq, dims=[-1])
+
+            # THÊM MỚI: Ngẫu nhiên tắt luồng Optical Flow để giảm overfitting
+            if torch.rand(1).item() < 0.15: # 15% cơ hội
+                flow_seq.fill_(0)
+
                 
             smoothed_labels = labels
 

@@ -53,11 +53,12 @@ class TwoStreamBiLSTMModel(nn.Module):
         feat_rgb = self.cnn_rgb(x_rgb) 
         feat_op = self.cnn_op(x_op)    
         
-        #LỚP FUSION (NÉN FEATURE) 
-        # Nối đặc trưng của 2 luồng
-        feat_concat = torch.cat((feat_rgb, feat_op), dim=1)
+        # Thêm Dropout 50% cho Flow để ép mô hình phải nhìn cả nhánh RGB
+        feat_op = nn.functional.dropout(feat_op, p=0.5, training=self.training)
         
-        feat_fused = self.feature_fusion(feat_concat)       
+        #LỚP FUSION (NÉN FEATURE) 
+        feat_concat = torch.cat((feat_rgb, feat_op), dim=1)
+        feat_fused = self.feature_fusion(feat_concat)      
         
         #MẠNG BILSTM 
         feat_fused = feat_fused.view(B, T, -1) 
